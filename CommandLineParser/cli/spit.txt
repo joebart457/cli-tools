@@ -1,0 +1,14 @@
+7:48 AM 7/21/2022===================================================
+// sudo whitelist create identity -f Hannah -l Bart -m Single
+cli.CommandBuilder
+	.Create()
+	.Verb("create")
+	.Option("o", "object")
+	.WithValidator(s => s == "identity" || s == "entry")
+	.WithDefault("identity")
+	.Option("f", "firstname")
+	.WithValidator(s => !string.IsNullOrEmpty())
+	
+cli.CommandBuilder.CommandGroup()
+	.Verb()
+	
