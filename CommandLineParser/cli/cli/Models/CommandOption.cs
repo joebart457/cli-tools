@@ -1,4 +1,5 @@
 ﻿using cli.Extensions;
+using cli.Models.Constants;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,12 +22,18 @@ namespace cli.Models
         public string Verbose { get { return _verbose; } }
         public bool IsFlag { get { return _isFlag; } }
         public bool Required { get { return _required; } }
+        public string? Default { get { return _default; } }
+        public Func<string, bool>? Validator { get { return _validator; } }
         public CommandOption(string abbr, string verbose)
         {
             _abbr = abbr;
             _verbose = verbose;
         }
 
+        public static CommandOption WildCard()
+        {
+            return new CommandOption(CommandConstants.WildCard, CommandConstants.WildCard);
+        }
         public void SetValidator(Func<string, bool> validator)
         {
             _validator = validator;
@@ -54,8 +61,8 @@ namespace cli.Models
 
         public string GetHelpText(int nestingLevel)
         {
-            string helpText = $"-{_abbr} | --{_verbose} :{(_required ? "(required)" : "")} {_description}\n";
-            return helpText.Nest(nestingLevel);
+            string helpText = $"-{_abbr} | --{_verbose} : {(_required ? "(required)" : "")} {_description}\n";
+            return helpText.Nest(nestingLevel) ?? "";
         }
 
         public override string ToString()

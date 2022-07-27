@@ -46,7 +46,7 @@ namespace cli
 						.WithValidator(s => !string.IsNullOrEmpty(s));
 
 			Console.WriteLine(group.GetHelpText());
-			group.Resolve(new string[] {"do", "create"});
+			group.Execute(new string[] {"do", "create"});
 
 		}
 	}

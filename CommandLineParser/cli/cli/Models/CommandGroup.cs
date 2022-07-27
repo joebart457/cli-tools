@@ -1,4 +1,5 @@
 ﻿using cli.Extensions;
+using cli.Models.Constants;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,17 +16,19 @@ namespace cli.Models
         private CommandVerb? PreviousVerb { get; set; }
         public Dictionary<string, CommandGroup> Groups { get; set; }
         public Dictionary<string, CommandVerb> Verbs { get; set; }
+        private bool _showHelpIfUnresolvable = false;
         public CommandGroup(string name)
         {
             _name = name;
             Groups = new Dictionary<string, CommandGroup>();
             Verbs = new Dictionary<string, CommandVerb>();
+            PreviousGroup = this;
         }
 
         public string GetHelpText(int __nestingLevel = 0)
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine($"{_name}:".Nest(__nestingLevel));
+            sb.AppendLine($"|{_name}:".Nest(__nestingLevel));
             foreach (var verb in Verbs)
             {
                 sb.Append(verb.Value.GetHelpText(__nestingLevel + 1));
@@ -37,16 +40,36 @@ namespace cli.Models
             return sb.ToString();
         }
 
-        public int Resolve(string[] args)
+        public int Execute(string[] args)
+        {
+            if (!_showHelpIfUnresolvable) return Resolve(args);
+            try
+            {
+                return Resolve(args);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ERROR -- {ex.Message}");
+                Console.WriteLine($"Usage: {GetHelpText()}");
+            }
+            return 0;
+        }
+        private int Resolve(string[] args)
         {
             if (args.Length == 0) throw new ArgumentException("no arguments specified");
+
+            if (Groups.TryGetValue(args[0], out var commandGroup))
+            {
+                return commandGroup.Resolve(args.Skip(1).ToArray());
+            }
             if (Verbs.TryGetValue(args[0], out var commandVerb))
             {
                 return commandVerb.Execute(new Args(commandVerb.Options, args.Skip(1).ToArray()));
             }
-            if (Groups.TryGetValue(args[0], out var commandGroup))
+            // If neither are found, try to find a wildcard option
+            if (Verbs.TryGetValue(CommandConstants.WildCard, out var wildcardVerb))
             {
-                return commandGroup.Resolve(args.Skip(1).ToArray());
+                return wildcardVerb.Execute(new Args(args[0], wildcardVerb.Options, args.Skip(1).ToArray()));
             }
             throw new ArgumentException($"unable to resolve argument {args[0]}");
         }
@@ -58,10 +81,22 @@ namespace cli.Models
             return this;
         }
 
+        public CommandGroup SubGroup(CommandGroup group)
+        {
+            PreviousGroup?.Groups.Add(group._name, group);
+            return this;
+        }
+
+        public CommandGroup ShowHelpIfUnresolvable(bool value = true)
+        {
+            _showHelpIfUnresolvable = value;
+            return this;
+        }
+
 
         #region VerbChaining
 
-        public CommandGroup Verb(string verbName)
+        public CommandGroup Verb(string verbName = CommandConstants.WildCard)
         {
             if (PreviousGroup == null) throw new ArgumentNullException(nameof(PreviousGroup));
             PreviousVerb = new CommandVerb(verbName);

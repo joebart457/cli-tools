@@ -1,4 +1,5 @@
 ﻿using cli.Extensions;
+using cli.Models.Constants;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,7 +32,7 @@ namespace cli.Models
         {
             StringBuilder sb = new StringBuilder();
 
-            sb.Append($"{_verb}:{_description}\n".Nest(nestingLevel));
+            sb.Append($"{(_verb == CommandConstants.WildCard? "<any>": _verb)} : {_description}\n".Nest(nestingLevel));
             foreach(var option in Options)
             {
                 sb.Append(option.GetHelpText(nestingLevel + 1));

@@ -19,6 +19,18 @@ namespace cli.Models
             Resolve(args);
         }
 
+        public Args(string implicitOptionValue, HashSet<CommandOption> options, string[] args)
+        {
+            _lookup = new Dictionary<CommandOption, string>();
+            _options = options;
+            Resolve(args);
+            _lookup.Add(CommandOption.WildCard(), implicitOptionValue);
+        }
+
+        public Ty Verb<Ty>()
+        {
+            return Get<Ty>(CommandOption.WildCard());
+        }
         public Ty Get<Ty>(CommandOption option)
         {
             if (_lookup.TryGetValue(option, out var val))
@@ -28,6 +40,24 @@ namespace cli.Models
             throw new KeyNotFoundException($"{option} was not provided");
         }
 
+        public Ty Get<Ty>(string abbr, string verbose)
+        {
+            return Get<Ty>(new CommandOption(abbr, verbose));
+        }
+
+        public string ValueOf(CommandOption option)
+        {
+            if (_lookup.TryGetValue(option, out var val))
+            {
+                return val;
+            }
+            throw new KeyNotFoundException($"{option} was not provided");
+        }
+
+        public string ValueOf(string abbr, string verbose)
+        {
+            return ValueOf(new CommandOption(abbr, verbose));
+        }
 
         private void Resolve(string[] args)
         {
@@ -40,11 +70,20 @@ namespace cli.Models
                 }
                 else
                 {
-                    // otherwise, an option was already specified, so just grab the value
+                    // otherwise, an option was already specified, so just grab the value and validate it
+                    if (option.Validator != null)
+                    {
+                        if (!option.Validator(args[i])) throw new Exception($"validation failed on argument {args[i]} for option {option}");
+                    }
                     _lookup.Add(option, args[i]);
                     option = null; // ready for another option to be specified 
                 }
             }
+            _options.Where(option => !option.Required && option.Default != null).Except(_lookup.Keys).ToList().ForEach(option =>
+            {
+                if (option?.Default != null)
+                    _lookup.Add(option, option.Default);
+            });
             var remainingRequired = _options.Where(option => option.Required).Except(_lookup.Keys);
             if (remainingRequired.Any())
             {
